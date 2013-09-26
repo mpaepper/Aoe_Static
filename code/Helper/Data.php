@@ -64,7 +64,7 @@ class Aoe_Static_Helper_Data extends Mage_Core_Helper_Abstract
             $customerBlocks[trim($block[0])] = sizeof($block) > 1
                 ? trim($block[1]) : '';
         }
-        return array_filter($customerBlocks);
+        return $customerBlocks; //array_filter($customerBlocks);
     }
 
     /**
@@ -118,9 +118,12 @@ class Aoe_Static_Helper_Data extends Mage_Core_Helper_Abstract
     {
         $baseUrl = Mage::getBaseUrl(Mage_Core_Model_Store::URL_TYPE_WEB);
         $conn = Mage::getSingleton('core/resource')->getConnection('core_write');
+        $baseUrl = str_replace("https://", "http://", $baseUrl); // Make sure https is not used
+        $disableForeignKeyCheck = "SET @BACKUP_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS; SET @@FOREIGN_KEY_CHECKS=0;";
+        $restoreForeignKeyCheck = "SET @@FOREIGN_KEY_CHECKS=@BACKUP_FOREIGN_KEY_CHECKS; SET @BACKUP_FOREIGN_KEY_CHECKS=NULL;";
         foreach (array('url', 'tag', 'urltag') as $table) {
             $resource = Mage::getResourceModel('aoestatic/' . $table);
-            $conn->query(sprintf('TRUNCATE %s;', $resource->getMainTable()));
+            $conn->query($disableForeignKeyCheck.sprintf('TRUNCATE %s;', $resource->getMainTable()).$restoreForeignKeyCheck);
         }
         return $this->purge(array($baseUrl . '.*'));
     }
@@ -173,6 +176,10 @@ class Aoe_Static_Helper_Data extends Mage_Core_Helper_Abstract
               } else {
                   $options[CURLOPT_HTTPHEADER][] = "Cache-Control: no-cache";
                   $options[CURLOPT_HTTPHEADER][] = "Pragma: no-cache";
+              }
+              // Detect whether the $url contains the * placeholder, so a regular expression is used
+              if (strpos($url, '*') !== false) {
+                   $options[CURLOPT_CUSTOMREQUEST] = 'PURGEREGEX';
               }
               $options[CURLOPT_RETURNTRANSFER] = 1;
               $options[CURLOPT_SSL_VERIFYPEER] = 0;

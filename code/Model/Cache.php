@@ -41,6 +41,11 @@ class Aoe_Static_Model_Cache
             }
         } else if ($block instanceof Mage_Catalog_Block_Category_View) {
             $tags[] = 'catalog_category_' . $block->getCurrentCategory()->getId();
+        } else if ($block instanceof Mage_Page_Block_Html_Topmenu) {
+            // In Enterprise 1.13.0.1 the top menu's ->getCacheTags() method returns all the categories in the top menu.
+            // Since the top menu is on every page, all the pages then get all the categories as tags
+            // Then if we edit a product, all the pages will be purged in Varnish which is not what we want, so reset here
+            $tags = array();
         }
         $this->tags = array_merge($this->tags, $tags);
     }
